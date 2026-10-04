@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure File Transfer System — AES-256 + RSA-2048 Hybrid Cryptography</title>
+    <meta name="description" content="Professional demonstration of secure file transfer using hybrid cryptography combining AES-256-EAX and RSA-2048-OAEP">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: #1a2236;
+            --bg-card-hover: #1e2a42;
+            --bg-input: #0d1321;
+            --border: #2a3654;
+            --border-glow: #3b82f6;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-pink: #ec4899;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-dim: #64748b;
+            --gradient-sender: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            --gradient-receiver: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+            --gradient-transfer: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+            --shadow-lg: 0 20px 60px rgba(0,0,0,0.5);
+            --shadow-glow-blue: 0 0 30px rgba(59,130,246,0.15);
+            --shadow-glow-green: 0 0 30px rgba(16,185,129,0.15);
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+.bg-grid {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none; z-index: 0;
+        }
+        .bg-glow {
+            position: fixed; width: 600px; height: 600px; border-radius: 50%;
+            filter: blur(150px); opacity: 0.07; pointer-events: none; z-index: 0;
+        }
+        .bg-glow-1 { top: -200px; right: -100px; background: var(--accent-blue); }
+        .bg-glow-2 { bottom: -200px; left: -100px; background: var(--accent-purple); }
+        .bg-glow-3 { top: 50%; left: 50%; transform: translate(-50%,-50%); background: var(--accent-cyan); opacity: 0.04; }
+header {
+            position: relative; z-index: 10;
+            padding: 28px 40px 20px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(17,24,39,0.8);
+            backdrop-filter: blur(20px);
+        }
+        .header-inner { max-width: 1440px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+        .header-left { display: flex; align-items: center; gap: 16px; }
+        .logo-icon {
+            width: 48px; height: 48px; border-radius: 14px;
+            background: var(--gradient-sender);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; font-weight: 800; color: white;
+            box-shadow: 0 4px 20px rgba(59,130,246,0.3);
+        }
+        .header-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+        .header-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 2px; font-weight: 400; }
+        .header-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 14px; border-radius: 20px;
+            background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3);
+            color: var(--accent-green); font-size: 12px; font-weight: 600;
+        }
+        .header-badge::before {
+            content: ''; width: 6px; height: 6px; border-radius: 50%;
+            background: var(--accent-green); animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
+        }
+main {
+            position: relative; z-index: 10;
+            max-width: 1440px; margin: 0 auto;
+            padding: 30px 40px 60px;
+        }
+.steps-bar {
+            display: flex; align-items: center; justify-content: center;
+            gap: 0; margin-bottom: 36px;
+        }
+        .step-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 20px; border-radius: 10px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            cursor: default; transition: all 0.3s;
+        }
+        .step-item.active { border-color: var(--accent-blue); background: rgba(59,130,246,0.08); }
+        .step-item.completed { border-color: var(--accent-green); background: rgba(16,185,129,0.08); }
+        .step-num {
+            width: 30px; height: 30px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 700;
+            background: var(--bg-secondary); border: 2px solid var(--border);
+            color: var(--text-dim); transition: all 0.3s;
+        }
+        .step-item.active .step-num { background: var(--accent-blue); border-color: var(--accent-blue); color: white; }
+        .step-item.completed .step-num { background: var(--accent-green); border-color: var(--accent-green); color: white; }
+        .step-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+        .step-item.active .step-label { color: var(--accent-blue); }
+        .step-item.completed .step-label { color: var(--accent-green); }
+        .step-connector {
+            width: 40px; height: 2px; background: var(--border); flex-shrink: 0;
+        }
+        .step-connector.active { background: var(--accent-green); }
+.panel-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 24px; align-items: start;
+        }
+.card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        .card:hover { border-color: rgba(59,130,246,0.3); }
+        .card-header {
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 14px;
+        }
+        .card-icon {
+            width: 42px; height: 42px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+        .card-icon.sender { background: rgba(59,130,246,0.12); color: var(--accent-blue); }
+        .card-icon.receiver { background: rgba(16,185,129,0.12); color: var(--accent-green); }
+        .card-icon.transfer { background: rgba(245,158,11,0.12); color: var(--accent-amber); }
+        .card-icon.keys { background: rgba(139,92,246,0.12); color: var(--accent-purple); }
+        .card-icon.log { background: rgba(236,72,153,0.12); color: var(--accent-pink); }
+        .card-title { font-size: 16px; font-weight: 700; }
+        .card-desc { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+        .card-body { padding: 24px; }
+.btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 12px 24px; border-radius: 10px; border: none;
+            font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: all 0.25s; position: relative;
+            overflow: hidden;
+        }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-blue { background: var(--accent-blue); color: white; }
+        .btn-blue:hover:not(:disabled) { background: #2563eb; box-shadow: 0 4px 20px rgba(59,130,246,0.4); transform: translateY(-1px); }
+        .btn-green { background: var(--accent-green); color: white; }
+        .btn-green:hover:not(:disabled) { background: #059669; box-shadow: 0 4px 20px rgba(16,185,129,0.4); transform: translateY(-1px); }
+        .btn-amber { background: var(--accent-amber); color: #1a1a2e; }
+        .btn-amber:hover:not(:disabled) { background: #d97706; box-shadow: 0 4px 20px rgba(245,158,11,0.4); transform: translateY(-1px); }
+        .btn-purple { background: var(--accent-purple); color: white; }
+        .btn-purple:hover:not(:disabled) { background: #7c3aed; box-shadow: 0 4px 20px rgba(139,92,246,0.4); transform: translateY(-1px); }
+        .btn-outline {
+            background: transparent; color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+        .btn-outline:hover:not(:disabled) { border-color: var(--accent-blue); color: var(--accent-blue); }
+        .btn-lg { padding: 14px 32px; font-size: 15px; border-radius: 12px; }
+        .btn-full { width: 100%; }
+.upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px; padding: 32px 20px;
+            text-align: center; cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(13,19,33,0.5);
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--accent-blue);
+            background: rgba(59,130,246,0.05);
+        }
+        .upload-zone.has-file {
+            border-color: var(--accent-green); border-style: solid;
+            background: rgba(16,185,129,0.05);
+        }
+        .upload-icon { font-size: 36px; margin-bottom: 8px; }
+        .upload-text { font-size: 14px; color: var(--text-secondary); }
+        .upload-text strong { color: var(--accent-blue); }
+        .upload-file-name {
+            margin-top: 10px; font-family: 'JetBrains Mono', monospace;
+            font-size: 13px; color: var(--accent-green); font-weight: 600;
+        }
+.result-block {
+            background: var(--bg-input); border: 1px solid var(--border);
+            border-radius: 10px; padding: 16px 18px; margin-top: 16px;
+        }
+        .result-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 0; font-size: 13px;
+        }
+        .result-label { color: var(--text-dim); font-weight: 500; }
+        .result-value { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-primary); text-align: right; max-width: 60%; word-break: break-all; }
+        .result-value.success { color: var(--accent-green); }
+        .result-value.danger { color: var(--accent-red); }
+.transfer-column {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            min-width: 200px; padding-top: 60px; gap: 20px;
+        }
+        .transfer-pipe {
+            width: 4px; height: 60px;
+            background: var(--border); border-radius: 4px;
+            position: relative; overflow: hidden;
+        }
+        .transfer-pipe.active::after {
+            content: ''; position: absolute;
+            width: 100%; height: 30px;
+            background: var(--gradient-transfer);
+            border-radius: 4px;
+            animation: pipe-flow 1s infinite;
+        }
+        @keyframes pipe-flow {
+            0% { top: -30px; } 100% { top: 60px; }
+        }
+        .transfer-icon {
+            width: 64px; height: 64px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px;
+            background: var(--bg-card); border: 2px solid var(--border);
+            transition: all 0.5s;
+        }
+        .transfer-icon.active {
+            border-color: var(--accent-amber);
+            box-shadow: 0 0 30px rgba(245,158,11,0.3);
+            animation: pulse-icon 1.5s infinite;
+        }
+        .transfer-icon.done {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 30px rgba(16,185,129,0.3);
+        }
+        @keyframes pulse-icon {
+            0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); }
+        }
+        .transfer-label {
+            font-size: 12px; color: var(--text-dim);
+            text-align: center; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+.keygen-banner {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 24px 32px;
+            margin-bottom: 24px;
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 24px;
+        }
+        .keygen-info { display: flex; align-items: center; gap: 16px; }
+        .keygen-status {
+            font-size: 13px; font-weight: 600;
+            padding: 6px 14px; border-radius: 20px;
+        }
+        .keygen-status.ready { background: rgba(16,185,129,0.1); color: var(--accent-green); border: 1px solid rgba(16,185,129,0.3); }
+        .keygen-status.none { background: rgba(245,158,11,0.1); color: var(--accent-amber); border: 1px solid rgba(245,158,11,0.3); }
+.hex-preview {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px; color: var(--accent-cyan);
+            background: rgba(6,182,212,0.05);
+            border: 1px solid rgba(6,182,212,0.15);
+            border-radius: 8px; padding: 12px 14px;
+            margin-top: 12px; word-break: break-all;
+            line-height: 1.6; max-height: 80px; overflow: auto;
+        }
+.audit-section {
+            margin-top: 36px;
+        }
+        .audit-table {
+            width: 100%; border-collapse: separate; border-spacing: 0;
+        }
+        .audit-table th {
+            padding: 10px 16px; font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-dim); text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .audit-table td {
+            padding: 10px 16px; font-size: 13px;
+            border-bottom: 1px solid rgba(42,54,84,0.4);
+            color: var(--text-secondary);
+        }
+        .audit-table tr:hover td { background: rgba(59,130,246,0.03); }
+        .audit-type {
+            display: inline-block; padding: 3px 10px; border-radius: 6px;
+            font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+        }
+        .audit-type.KEY_GEN { background: rgba(139,92,246,0.15); color: var(--accent-purple); }
+        .audit-type.ENCRYPT { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+        .audit-type.TRANSFER { background: rgba(245,158,11,0.15); color: var(--accent-amber); }
+        .audit-type.DECRYPT { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+.download-area {
+            margin-top: 16px; padding: 16px;
+            background: rgba(16,185,129,0.05);
+            border: 1px solid rgba(16,185,129,0.2);
+            border-radius: 12px; text-align: center;
+        }
+        .download-area a {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 12px 28px; border-radius: 10px;
+            background: var(--accent-green); color: white;
+            text-decoration: none; font-weight: 700; font-size: 14px;
+            transition: all 0.25s;
+        }
+        .download-area a:hover {
+            background: #059669; box-shadow: 0 4px 20px rgba(16,185,129,0.4);
+            transform: translateY(-1px);
+        }
+.spinner {
+            width: 18px; height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            display: none;
+        }
+        .btn.loading .spinner { display: inline-block; }
+        .btn.loading .btn-text { display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+.fade-in { animation: fadeIn 0.5s ease forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 1100px) {
+            .panel-grid { grid-template-columns: 1fr; }
+            .transfer-column { flex-direction: row; padding-top: 0; min-width: auto; }
+            .transfer-pipe { width: 60px; height: 4px; }
+            .transfer-pipe.active::after { width: 30px; height: 100%; animation: pipe-flow-h 1s infinite; }
+            @keyframes pipe-flow-h { 0% { left: -30px; } 100% { left: 60px; } }
+            main { padding: 20px; }
+            header { padding: 20px; }
+        }
+.hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-glow bg-glow-3"></div>
+    <header>
+        <div class="header-inner">
+            <div class="header-left">
+                <div class="logo-icon">🔐</div>
+                <div>
+                    <div class="header-title">Secure File Transfer System</div>
+                    <div class="header-subtitle">Hybrid Cryptography: AES-256-EAX + RSA-2048-OAEP | SHA-256 Integrity</div>
+                </div>
+            </div>
+            <div class="header-badge" id="systemStatus">System Ready</div>
+        </div>
+    </header>
+    <main>
+        <div class="steps-bar" id="stepsBar">
+            <div class="step-item active" id="step1">
+                <div class="step-num">1</div>
+                <div class="step-label">Generate Keys</div>
+            </div>
+            <div class="step-connector" id="conn1"></div>
+            <div class="step-item" id="step2">
+                <div class="step-num">2</div>
+                <div class="step-label">Encrypt & Send</div>
+            </div>
+            <div class="step-connector" id="conn2"></div>
+            <div class="step-item" id="step3">
+                <div class="step-num">3</div>
+                <div class="step-label">Network Transfer</div>
+            </div>
+            <div class="step-connector" id="conn3"></div>
+            <div class="step-item" id="step4">
+                <div class="step-num">4</div>
+                <div class="step-label">Decrypt & Download</div>
+            </div>
+        </div>
+        <div class="keygen-banner" id="keygenBanner">
+            <div class="keygen-info">
+                <div class="card-icon keys">🔑</div>
+                <div>
+                    <div style="font-weight:700; font-size:15px;">RSA-2048 Key Pair</div>
+                    <div style="font-size:13px; color:var(--text-dim); margin-top:2px;">
+                        Generate public & private keys before starting the transfer
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:16px;">
+                <span class="keygen-status none" id="keyStatus">No Keys</span>
+                <button class="btn btn-purple" onclick="generateKeys()" id="btnKeygen">
+                    <span class="spinner"></span>
+                    <span class="btn-text">⚡ Generate RSA Keys</span>
+                </button>
+            </div>
+        </div>
+        <div class="result-block hidden" id="keyResult" style="margin-bottom:24px;"></div>
+        <div class="panel-grid">
+            <div class="card" id="senderCard">
+                <div class="card-header">
+                    <div class="card-icon sender">📤</div>
+                    <div>
+                        <div class="card-title">Sender</div>
+                        <div class="card-desc">Upload & encrypt file using AES-256 + RSA-2048</div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+                        <div class="upload-icon">📁</div>
+                        <div class="upload-text">
+                            <strong>Click to browse</strong> or drag & drop a file
+                        </div>
+                        <div class="upload-text" style="font-size:12px; margin-top:4px;">
+                            Supports any file type up to 50 MB
+                        </div>
+                        <div class="upload-file-name hidden" id="fileName"></div>
+                    </div>
+                    <input type="file" id="fileInput" style="display:none" onchange="handleFileSelect(this)">
+                    <button class="btn btn-blue btn-full btn-lg" style="margin-top:16px;" onclick="encryptAndSend()" id="btnEncrypt" disabled>
+                        <span class="spinner"></span>
+                        <span class="btn-text">🔒 Encrypt File</span>
+                    </button>
+                    <div class="hidden" id="encryptResult">
+                        <div class="result-block fade-in">
+                            <div style="font-weight:700; font-size:14px; color:var(--accent-blue); margin-bottom:10px;">✅ Encryption Complete</div>
+                            <div class="result-row">
+                                <span class="result-label">Original Size</span>
+                                <span class="result-value" id="resOrigSize"></span>
+                            </div>
+                            <div class="result-row">
+                                <span class="result-label">Encrypted Size</span>
+                                <span class="result-value" id="resEncSize"></span>
+                            </div>
+                            <div class="result-row">
+                                <span class="result-label">Overhead</span>
+                                <span class="result-value" id="resOverhead"></span>
+                            </div>
+                            <div class="result-row">
+                                <span class="result-label">SHA-256 (Original)</span>
+                                <span class="result-value" id="resSha256Orig" style="font-size:10px;"></span>
+                            </div>
+                            <div class="result-row">
+                                <span class="result-label">SHA-256 (Bundle)</span>
+                                <span class="result-value" id="resSha256Bundle" style="font-size:10px;"></span>
+                            </div>
+                            <div class="result-row">
+                                <span class="result-label">Time</span>
+                                <span class="result-value success" id="resEncTime"></span>
+                            </div>
+                        </div>
+                        <div class="hex-preview" id="hexPreview"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="transfer-column">
+                <div class="transfer-label">Sender</div>
+                <div class="transfer-pipe" id="pipe1"></div>
+                <div class="transfer-icon" id="transferIcon">🌐</div>
+                <div class="transfer-pipe" id="pipe2"></div>
+                <div class="transfer-label">Receiver</div>
+                <button class="btn btn-amber btn-lg" onclick="networkTransfer()" id="btnTransfer" disabled style="margin-top:16px;">
+                    <span class="spinner"></span>
+                    <span class="btn-text">📡 Transfer via TCP</span>
+                </button>
+                <div class="hidden" id="transferResult" style="width:100%;">
+                    <div class="result-block fade-in" style="font-size:12px;">
+                        <div style="font-weight:700; color:var(--accent-amber); margin-bottom:8px;">✅ Transfer Complete</div>
+                        <div class="result-row"><span class="result-label">Protocol</span><span class="result-value" id="resTxProto"></span></div>
+                        <div class="result-row"><span class="result-label">Port</span><span class="result-value" id="resTxPort"></span></div>
+                        <div class="result-row"><span class="result-label">Bytes Sent</span><span class="result-value" id="resTxSent"></span></div>
+                        <div class="result-row"><span class="result-label">Bytes Received</span><span class="result-value" id="resTxRecv"></span></div>
+                        <div class="result-row"><span class="result-label">Integrity</span><span class="result-value" id="resTxIntegrity"></span></div>
+                        <div class="result-row"><span class="result-label">Time</span><span class="result-value success" id="resTxTime"></span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="card" id="receiverCard">
+                <div class="card-header">
+                    <div class="card-icon receiver">📥</div>
+                    <div>
+                        <div class="card-title">Receiver</div>
+                        <div class="card-desc">Decrypt received file using RSA private key + AES</div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div style="text-align:center; padding:24px 0; color:var(--text-dim);" id="receiverWaiting">
+                        <div style="font-size:40px; margin-bottom:10px;">📭</div>
+                        <div>Waiting for encrypted file transfer...</div>
+                        <div style="font-size:12px; margin-top:4px;">File will appear here after network transfer</div>
+                    </div>
+                    <div class="hidden" id="receiverReady">
+                        <div class="result-block" style="margin-top:0; text-align:center;">
+                            <div style="font-size:32px; margin-bottom:6px;">📨</div>
+                            <div style="font-weight:700; color:var(--accent-green);">Encrypted File Received!</div>
+                            <div style="font-size:12px; color:var(--text-dim); margin-top:4px;" id="receivedFileName"></div>
+                        </div>
+                        <button class="btn btn-green btn-full btn-lg" style="margin-top:16px;" onclick="decryptFile()" id="btnDecrypt">
+                            <span class="spinner"></span>
+                            <span class="btn-text">🔓 Decrypt File</span>
+                        </button>
+                    </div>
+                    <div class="hidden" id="decryptResult">
+                        <div class="result-block fade-in">
+                            <div style="font-weight:700; font-size:14px; color:var(--accent-green); margin-bottom:10px;">✅ Decryption & Verification</div>
+                            <div class="result-row">
+                                <span class="result-label">File Name</span>
+                                <span class="result-value" id="resDecName"></span>
+                            </div>
+                            <div class="result-row">
+                                <span class="result-label">Decrypted Size</span>
+                                <span class="result-value" id="resDecSize"></span>
+                            </div>
+                            <div class="result-row">
+                                <span class="result-label">SHA-256</span>
+                                <span class="result-value" id="resDecSha" style="font-size:10px;"></span>
+                            </div>
+                            <div class="result-row">
+                                <span class="result-label">Integrity</span>
+                                <span class="result-value" id="resDecIntegrity"></span>
+                            </div>
+                            <div class="result-row">
+                                <span class="result-label">Time</span>
+                                <span class="result-value success" id="resDecTime"></span>
+                            </div>
+                        </div>
+                        <div class="download-area" id="downloadArea"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="audit-section">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon log">📋</div>
+                    <div>
+                        <div class="card-title">Audit Log</div>
+                        <div class="card-desc">Complete record of all cryptographic operations</div>
+                    </div>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <table class="audit-table" id="auditTable">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Operation</th>
+                                <th>Message</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditBody">
+                            <tr><td colspan="4" style="text-align:center; color:var(--text-dim); padding:24px;">No operations yet. Start by generating keys.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script>
+        // ---- State ----
+        let selectedFile = null;
+        let currentEncFilename = null;
+        let currentStep = 1;
+        // ---- Helpers ----
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        function setLoading(btn, loading) {
+            if (loading) { btn.classList.add('loading'); btn.disabled = true; }
+            else { btn.classList.remove('loading'); btn.disabled = false; }
+        }
+        function setStep(step) {
+            currentStep = step;
+            for (let i = 1; i <= 4; i++) {
+                const el = document.getElementById('step' + i);
+                const conn = document.getElementById('conn' + (i - 1));
+                el.classList.remove('active', 'completed');
+                if (conn) conn.classList.remove('active');
+                if (i < step) { el.classList.add('completed'); if (conn) conn.classList.add('active'); }
+                else if (i === step) { el.classList.add('active'); }
+            }
+        }
+        function show(id) { document.getElementById(id).classList.remove('hidden'); }
+        function hide(id) { document.getElementById(id).classList.add('hidden'); }
+        // ---- File Selection ----
+        const uploadZone = document.getElementById('uploadZone');
+        uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+        uploadZone.addEventListener('dragleave', () => { uploadZone.classList.remove('dragover'); });
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                document.getElementById('fileInput').files = e.dataTransfer.files;
+                handleFileSelect(document.getElementById('fileInput'));
+            }
+        });
+        function handleFileSelect(input) {
+            if (input.files.length > 0) {
+                selectedFile = input.files[0];
+                document.getElementById('fileName').textContent = `${selectedFile.name} (${formatBytes(selectedFile.size)})`;
+                show('fileName');
+                uploadZone.classList.add('has-file');
+                document.getElementById('btnEncrypt').disabled = false;
+            }
+        }
+        // ---- Generate Keys ----
+        async function generateKeys() {
+            const btn = document.getElementById('btnKeygen');
+            setLoading(btn, true);
+            try {
+                const res = await fetch('/api/generate-keys', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('keyStatus').textContent = 'Keys Ready';
+                    document.getElementById('keyStatus').className = 'keygen-status ready';
+                    const keyResult = document.getElementById('keyResult');
+                    keyResult.innerHTML = `
+                        <div class="fade-in" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+                            <div style="background:var(--bg-input); padding:14px; border-radius:10px; border:1px solid var(--border);">
+                                <div style="font-size:12px; color:var(--text-dim); margin-bottom:4px;">🔒 Private Key</div>
+                                <div style="font-weight:700;">private.pem</div>
+                                <div style="font-size:12px; color:var(--accent-purple); margin-top:2px;">${data.private_key_size} bytes</div>
+                            </div>
+                            <div style="background:var(--bg-input); padding:14px; border-radius:10px; border:1px solid var(--border);">
+                                <div style="font-size:12px; color:var(--text-dim); margin-bottom:4px;">🔓 Public Key</div>
+                                <div style="font-weight:700;">public.pem</div>
+                                <div style="font-size:12px; color:var(--accent-blue); margin-top:2px;">${data.public_key_size} bytes</div>
+                            </div>
+                            <div style="background:var(--bg-input); padding:14px; border-radius:10px; border:1px solid var(--border);">
+                                <div style="font-size:12px; color:var(--text-dim); margin-bottom:4px;">⏱️ Generation Time</div>
+                                <div style="font-weight:700; color:var(--accent-green);">${data.time_ms} ms</div>
+                                <div style="font-size:12px; color:var(--text-dim); margin-top:2px;">RSA-2048 OAEP</div>
+                            </div>
+                        </div>`;
+                    show('keyResult');
+                    setStep(2);
+                    refreshAudit();
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+            setLoading(btn, false);
+        }
+        // ---- Encrypt ----
+        async function encryptAndSend() {
+            if (!selectedFile) return;
+            const btn = document.getElementById('btnEncrypt');
+            setLoading(btn, true);
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            try {
+                const res = await fetch('/api/encrypt', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (data.success) {
+                    currentEncFilename = data.enc_filename;
+                    document.getElementById('resOrigSize').textContent = formatBytes(data.original_size);
+                    document.getElementById('resEncSize').textContent = formatBytes(data.encrypted_size);
+                    document.getElementById('resOverhead').textContent = `+${data.overhead_bytes} bytes (header)`;
+                    document.getElementById('resSha256Orig').textContent = data.sha256_original;
+                    document.getElementById('resSha256Bundle').textContent = data.sha256_bundle;
+                    document.getElementById('resEncTime').textContent = data.time_ms + ' ms';
+                    document.getElementById('hexPreview').textContent = data.encrypted_hex_preview;
+                    show('encryptResult');
+                    document.getElementById('btnTransfer').disabled = false;
+                    setStep(3);
+                    refreshAudit();
+                } else {
+                    alert('Encryption failed: ' + data.error);
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+            setLoading(btn, false);
+        }
+        // ---- Transfer ----
+        async function networkTransfer() {
+            const btn = document.getElementById('btnTransfer');
+            setLoading(btn, true);
+            // Activate transfer animation
+            document.getElementById('pipe1').classList.add('active');
+            document.getElementById('pipe2').classList.add('active');
+            document.getElementById('transferIcon').classList.add('active');
+            try {
+                const res = await fetch('/api/transfer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enc_filename: currentEncFilename })
+                });
+                const data = await res.json();
+                // Stop animation
+                document.getElementById('pipe1').classList.remove('active');
+                document.getElementById('pipe2').classList.remove('active');
+                document.getElementById('transferIcon').classList.remove('active');
+                document.getElementById('transferIcon').classList.add('done');
+                if (data.success) {
+                    document.getElementById('resTxProto').textContent = data.protocol;
+                    document.getElementById('resTxPort').textContent = data.port;
+                    document.getElementById('resTxSent').textContent = formatBytes(data.bytes_sent);
+                    document.getElementById('resTxRecv').textContent = formatBytes(data.bytes_received);
+                    document.getElementById('resTxIntegrity').textContent = data.integrity_verified ? '✅ VERIFIED' : '❌ FAILED';
+                    document.getElementById('resTxIntegrity').className = 'result-value ' + (data.integrity_verified ? 'success' : 'danger');
+                    document.getElementById('resTxTime').textContent = data.time_ms + ' ms';
+                    show('transferResult');
+                    // Show receiver panel
+                    hide('receiverWaiting');
+                    document.getElementById('receivedFileName').textContent = currentEncFilename + ' — ' + formatBytes(data.bytes_received);
+                    show('receiverReady');
+                    setStep(4);
+                    refreshAudit();
+                }
+            } catch (err) {
+                alert('Transfer error: ' + err.message);
+            }
+            setLoading(btn, false);
+        }
+        // ---- Decrypt ----
+        async function decryptFile() {
+            const btn = document.getElementById('btnDecrypt');
+            setLoading(btn, true);
+            try {
+                const res = await fetch('/api/decrypt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enc_filename: currentEncFilename })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('resDecName').textContent = data.original_name;
+                    document.getElementById('resDecSize').textContent = formatBytes(data.decrypted_size);
+                    document.getElementById('resDecSha').textContent = data.sha256;
+                    document.getElementById('resDecIntegrity').textContent = data.verified ? '✅ VERIFIED — File is authentic' : '❌ FAILED';
+                    document.getElementById('resDecIntegrity').className = 'result-value ' + (data.verified ? 'success' : 'danger');
+                    document.getElementById('resDecTime').textContent = data.time_ms + ' ms';
+                    document.getElementById('downloadArea').innerHTML = `
+                        <div style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
+                            File decrypted successfully and integrity verified!
+                        </div>
+                        <a href="${data.download_url}" download>
+                            ⬇️ Download Decrypted File
+                        </a>
+                    `;
+                    show('decryptResult');
+                    hide('receiverReady');
+                    refreshAudit();
+                    // Update final step
+                    document.getElementById('step4').classList.remove('active');
+                    document.getElementById('step4').classList.add('completed');
+                    document.getElementById('conn3').classList.add('active');
+                } else {
+                    alert('Decryption failed: ' + data.error);
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+            setLoading(btn, false);
+        }
+        // ---- Audit Log ----
+        async function refreshAudit() {
+            try {
+                const res = await fetch('/api/audit-log');
+                const data = await res.json();
+                const tbody = document.getElementById('auditBody');
+                if (data.log.length === 0) return;
+                tbody.innerHTML = data.log.map(entry => `
+                    <tr class="fade-in">
+                        <td style="font-family:'JetBrains Mono',monospace; font-size:12px; white-space:nowrap;">${entry.timestamp}</td>
+                        <td><span class="audit-type ${entry.type}">${entry.type}</span></td>
+                        <td>${entry.message}</td>
+                        <td style="font-size:11px; font-family:'JetBrains Mono',monospace; color:var(--text-dim); max-width:300px; word-break:break-all;">
+                            ${Object.entries(entry.details).map(([k,v]) => `${k}: ${v}`).join(' | ')}
+                        </td>
+                    </tr>
+                `).join('');
+            } catch(err) { console.error(err); }
+        }
+        // ---- Check initial status ----
+        fetch('/api/status').then(r => r.json()).then(data => {
+            if (data.keys_generated) {
+                document.getElementById('keyStatus').textContent = 'Keys Ready';
+                document.getElementById('keyStatus').className = 'keygen-status ready';
+                setStep(2);
+            }
+        });
+    </script>
+</body>
+</html>

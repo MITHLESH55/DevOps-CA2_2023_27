@@ -1,0 +1,40 @@
+[Unit]
+Description=Secure File Transfer Application
+Documentation=https://github.com/MITHLESH55/SecureFileTransfer-DevSecOps
+After=network.target
+
+[Service]
+Type=simple
+
+User=sftapp
+Group=sftapp
+
+WorkingDirectory=/opt/secure-file-transfer
+
+Environment="PYTHONDONTWRITEBYTECODE=1"
+Environment="PYTHONUNBUFFERED=1"
+Environment="APP_VERSION=1.0.0"
+
+ExecStart=/opt/secure-file-transfer/venv/bin/gunicorn \
+    --bind 127.0.0.1:5002 \
+    --workers 1 \
+    --threads 4 \
+    --timeout 120 \
+    web.app:app
+
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/secure-file-transfer/web_workspace
+
+CapabilityBoundingSet=
+RestrictSUIDSGID=true
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

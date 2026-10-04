@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sender — Secure File Transfer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        :root{
+            --white:#fff;--bg:#f8f9fa;--surface:#fff;--surface-hover:#f1f3f4;
+            --border:#dadce0;--border-focus:#1a73e8;
+            --blue:#1a73e8;--blue-light:#e8f0fe;--blue-dark:#1557b0;
+            --green:#1e8e3e;--green-light:#e6f4ea;
+            --red:#d93025;--red-light:#fce8e6;
+            --yellow:#f9ab00;--yellow-light:#fef7e0;
+            --purple:#7c3aed;--purple-light:#f3e8ff;
+            --text-primary:#202124;--text-secondary:#5f6368;--text-disabled:#9aa0a6;
+            --shadow-1:0 1px 2px 0 rgba(60,64,67,.3),0 1px 3px 1px rgba(60,64,67,.15);
+            --radius:8px;--radius-lg:12px;
+        }
+        body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--text-primary);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+        nav{background:var(--white);border-bottom:1px solid var(--border);padding:12px 24px;position:sticky;top:0;z-index:100}
+        .nav-inner{max-width:960px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+        .nav-brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--text-primary)}
+        .nav-icon{width:40px;height:40px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px}
+        .nav-title{font-family:'Google Sans',sans-serif;font-size:18px;font-weight:500}
+        .nav-links{display:flex;gap:4px}
+        .nav-link{padding:8px 16px;border-radius:100px;font-size:14px;font-weight:500;text-decoration:none;color:var(--text-secondary);transition:.2s}
+        .nav-link:hover{background:var(--surface-hover)}
+        .nav-link.active{background:var(--blue-light);color:var(--blue)}
+
+        .container{max-width:720px;margin:0 auto;padding:32px 24px 80px}
+        .page-header{margin-bottom:32px}
+        .page-header h1{font-family:'Google Sans',sans-serif;font-size:28px;font-weight:400;margin-bottom:8px}
+        .page-header p{font-size:14px;color:var(--text-secondary);line-height:1.6}
+
+        .security-banner{background:linear-gradient(135deg,#e8f0fe,#e6f4ea);border:1px solid #a8c7fa;border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:24px;display:flex;align-items:center;gap:12px}
+        .security-banner .material-icons-outlined{color:var(--blue);font-size:24px}
+        .security-banner-text{font-size:13px;color:var(--text-secondary);line-height:1.5}
+        .security-banner-text strong{color:var(--blue)}
+
+        .stepper{display:flex;align-items:center;gap:0;margin-bottom:32px;padding:0 8px}
+        .step{display:flex;align-items:center;gap:8px}
+        .step-circle{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;background:var(--surface-hover);color:var(--text-disabled);border:2px solid var(--border);transition:.3s;flex-shrink:0}
+        .step.active .step-circle{background:var(--blue);border-color:var(--blue);color:#fff}
+        .step.done .step-circle{background:var(--green);border-color:var(--green);color:#fff}
+        .step-label{font-size:13px;font-weight:500;color:var(--text-disabled);white-space:nowrap}
+        .step.active .step-label{color:var(--blue)}
+        .step.done .step-label{color:var(--green)}
+        .step-line{flex:1;height:2px;background:var(--border);margin:0 12px;min-width:24px}
+        .step-line.done{background:var(--green)}
+
+        .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:16px;overflow:hidden;transition:.2s}
+        .card:hover{box-shadow:var(--shadow-1)}
+        .card-head{padding:20px 24px;display:flex;align-items:center;gap:16px}
+        .card-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+        .card-icon.blue{background:var(--blue-light);color:var(--blue)}
+        .card-icon.green{background:var(--green-light);color:var(--green)}
+        .card-icon.yellow{background:var(--yellow-light);color:var(--yellow)}
+        .card-icon.purple{background:var(--purple-light);color:var(--purple)}
+        .card-title{font-family:'Google Sans',sans-serif;font-size:16px;font-weight:500}
+        .card-desc{font-size:13px;color:var(--text-secondary);margin-top:2px}
+        .card-body{padding:0 24px 24px}
+        .card-body.collapsed{display:none}
+
+        .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 24px;border-radius:100px;border:none;font-family:'Google Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:.2s}
+        .btn:disabled{opacity:.38;cursor:default}
+        .btn-primary{background:var(--blue);color:#fff}
+        .btn-primary:hover:not(:disabled){background:var(--blue-dark);box-shadow:var(--shadow-1)}
+        .btn-full{width:100%}
+        .btn-lg{padding:12px 32px;font-size:15px}
+
+        .spinner{display:none;width:18px;height:18px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+        .btn.loading .spinner{display:block}
+        .btn.loading .btn-label{display:none}
+        @keyframes spin{to{transform:rotate(360deg)}}
+
+        .input-group{margin-bottom:16px}
+        .input-group label{display:block;font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+        .input-field{width:100%;padding:14px 16px;border:1px solid var(--border);border-radius:var(--radius);font-family:'Roboto Mono',monospace;font-size:15px;color:var(--text-primary);background:var(--white);transition:.2s;outline:none;letter-spacing:2px;text-align:center;font-weight:700}
+        .input-field:focus{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-light)}
+        .input-field::placeholder{color:var(--text-disabled);font-weight:400;letter-spacing:0}
+        textarea.input-field{text-align:left;font-size:11px;letter-spacing:0;font-weight:400;resize:vertical;min-height:140px;line-height:1.5}
+
+        .upload-area{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:40px 24px;text-align:center;cursor:pointer;transition:.2s;background:var(--bg)}
+        .upload-area:hover,.upload-area.dragover{border-color:var(--blue);background:var(--blue-light)}
+        .upload-area.has-file{border-color:var(--green);border-style:solid;background:var(--green-light)}
+        .upload-area .material-icons-outlined{font-size:48px;color:var(--text-disabled);margin-bottom:12px}
+        .upload-area.has-file .material-icons-outlined{color:var(--green)}
+        .upload-text{font-size:14px;color:var(--text-secondary)}
+        .upload-text strong{color:var(--blue);cursor:pointer}
+        .upload-fname{margin-top:12px;font-family:'Roboto Mono',monospace;font-size:13px;color:var(--green);font-weight:500;display:none}
+
+        .result-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-top:16px;animation:fadeUp .3s ease}
+        .result-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px}
+        .result-label{color:var(--text-secondary)}
+        .result-val{font-family:'Roboto Mono',monospace;font-size:12px;color:var(--text-primary);text-align:right;max-width:55%;word-break:break-all}
+        .result-val.ok{color:var(--green);font-weight:500}
+
+        .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:100px;font-size:12px;font-weight:500}
+        .badge-green{background:var(--green-light);color:var(--green)}
+
+        .done-box{background:var(--green-light);border:1px solid #a8dab5;border-radius:var(--radius-lg);padding:24px;text-align:center;margin-top:16px;animation:fadeUp .3s ease}
+        .done-box h3{font-family:'Google Sans',sans-serif;font-size:18px;font-weight:500;color:var(--green);margin-bottom:4px}
+        .done-box p{font-size:13px;color:var(--text-secondary)}
+
+        .hex-block{font-family:'Roboto Mono',monospace;font-size:11px;color:var(--text-secondary);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-top:12px;word-break:break-all;line-height:1.6;max-height:60px;overflow:auto}
+
+        .error-box{background:var(--red-light);border:1px solid #f5c6c2;border-radius:var(--radius);padding:12px 16px;margin-top:12px;font-size:13px;color:var(--red);display:flex;align-items:center;gap:8px;animation:fadeUp .3s ease}
+
+        .key-status{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--radius);font-size:12px;font-weight:500;margin-top:8px}
+        .key-status.none{background:var(--red-light);color:var(--red)}
+        .key-status.valid{background:var(--green-light);color:var(--green)}
+
+        @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        .hidden{display:none!important}
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-inner">
+            <a href="/" class="nav-brand">
+                <div class="nav-icon"><span class="material-icons-outlined">lock</span></div>
+                <span class="nav-title">Secure File Transfer</span>
+            </a>
+            <div class="nav-links">
+                <a href="/sender" class="nav-link active">Sender</a>
+                <a href="/receiver" class="nav-link">Receiver</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>Send a file securely</h1>
+            <p>Enter the Transfer ID and paste the Public Key from the receiver, then upload your file to encrypt and send it.</p>
+        </div>
+
+        <div class="security-banner">
+            <span class="material-icons-outlined">security</span>
+            <div class="security-banner-text">
+                <strong>Public Key Encryption:</strong> You must paste the <strong>receiver's public key</strong> to encrypt. The server verifies it matches before encrypting. Only the receiver's private key can decrypt.
+            </div>
+        </div>
+
+        <div class="stepper">
+            <div class="step active" id="s1"><div class="step-circle">1</div><div class="step-label">Enter credentials</div></div>
+            <div class="step-line" id="sl1"></div>
+            <div class="step" id="s2"><div class="step-circle">2</div><div class="step-label">Upload & encrypt</div></div>
+            <div class="step-line" id="sl2"></div>
+            <div class="step" id="s3"><div class="step-circle">3</div><div class="step-label">Sent</div></div>
+        </div>
+
+        <!-- STEP 1: Enter Transfer ID + Public Key -->
+        <div class="card" id="card1">
+            <div class="card-head">
+                <div class="card-icon purple"><span class="material-icons-outlined">vpn_key</span></div>
+                <div><div class="card-title">Enter Transfer ID & Public Key</div><div class="card-desc">Paste both the Transfer ID and the Public Key you received from the receiver</div></div>
+            </div>
+            <div class="card-body" id="body1">
+                <div class="input-group">
+                    <label>Transfer ID (from receiver)</label>
+                    <input type="text" class="input-field" id="inputTransferId" placeholder="e.g. A1B2C3D4" maxlength="8" style="text-transform:uppercase" oninput="checkReady()">
+                </div>
+                <div class="input-group">
+                    <label>Receiver's Public Key (PEM format)</label>
+                    <textarea class="input-field" id="inputPublicKey" placeholder="-----BEGIN PUBLIC KEY-----&#10;...paste the complete public key from the receiver...&#10;-----END PUBLIC KEY-----" rows="6" oninput="checkReady()"></textarea>
+                </div>
+                <div id="keyStatus"></div>
+                <div id="credError" class="hidden"></div>
+            </div>
+        </div>
+
+        <!-- STEP 2: Upload & encrypt -->
+        <div class="card" id="card2">
+            <div class="card-head">
+                <div class="card-icon green"><span class="material-icons-outlined">cloud_upload</span></div>
+                <div><div class="card-title">Upload & encrypt file</div><div class="card-desc">Select a file — it will be encrypted with the receiver's public key using AES-256 + RSA-2048</div></div>
+            </div>
+            <div class="card-body collapsed" id="body2">
+                <div class="upload-area" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+                    <span class="material-icons-outlined">upload_file</span>
+                    <div class="upload-text"><strong>Click to choose a file</strong> or drag and drop</div>
+                    <div class="upload-text" style="font-size:12px;margin-top:4px;color:var(--text-disabled)">Supports all file types up to 50 MB</div>
+                    <div class="upload-fname" id="fileName"></div>
+                </div>
+                <input type="file" id="fileInput" style="display:none" onchange="handleFile(this)">
+                <button class="btn btn-primary btn-lg btn-full" style="margin-top:16px" onclick="encryptAndSend()" id="btnEncrypt" disabled>
+                    <span class="spinner"></span>
+                    <span class="btn-label"><span class="material-icons-outlined" style="font-size:18px">enhanced_encryption</span> Encrypt with public key & send</span>
+                </button>
+                <div class="hidden" id="encResult"></div>
+            </div>
+        </div>
+
+        <!-- STEP 3: Done -->
+        <div class="card" id="card3">
+            <div class="card-head">
+                <div class="card-icon yellow"><span class="material-icons-outlined">check_circle</span></div>
+                <div><div class="card-title">Transfer complete</div><div class="card-desc">The receiver can now decrypt and download the file using their private key</div></div>
+            </div>
+            <div class="card-body collapsed" id="body3"></div>
+        </div>
+    </div>
+
+    <script>
+        let transferId=null, publicKey=null, selectedFile=null;
+        function formatBytes(b){if(!b)return'0 B';const k=1024,s=['B','KB','MB','GB'];const i=Math.floor(Math.log(b)/Math.log(k));return parseFloat((b/Math.pow(k,i)).toFixed(2))+' '+s[i]}
+        function setLoading(btn,on){if(on){btn.classList.add('loading');btn.disabled=true}else{btn.classList.remove('loading');btn.disabled=false}}
+        function setStep(n){for(let i=1;i<=3;i++){const s=document.getElementById('s'+i);s.classList.remove('active','done');if(i<n){s.classList.add('done')}else if(i===n){s.classList.add('active')}}for(let i=1;i<=2;i++){const l=document.getElementById('sl'+i);l.classList.toggle('done',i<n)}}
+
+        const uz=document.getElementById('uploadZone');
+        uz.addEventListener('dragover',e=>{e.preventDefault();uz.classList.add('dragover')});
+        uz.addEventListener('dragleave',()=>uz.classList.remove('dragover'));
+        uz.addEventListener('drop',e=>{e.preventDefault();uz.classList.remove('dragover');if(e.dataTransfer.files.length){document.getElementById('fileInput').files=e.dataTransfer.files;handleFile(document.getElementById('fileInput'))}});
+
+        function handleFile(input){if(input.files.length){selectedFile=input.files[0];const fn=document.getElementById('fileName');fn.textContent=selectedFile.name+' ('+formatBytes(selectedFile.size)+')';fn.style.display='block';uz.classList.add('has-file');document.getElementById('btnEncrypt').disabled=false}}
+
+        function checkReady(){
+            const tid=document.getElementById('inputTransferId').value.trim();
+            const pk=document.getElementById('inputPublicKey').value.trim();
+            const ks=document.getElementById('keyStatus');
+
+            if(tid.length>=6 && pk.includes('-----BEGIN PUBLIC KEY-----') && pk.includes('-----END PUBLIC KEY-----')){
+                transferId=tid.toUpperCase();
+                publicKey=pk;
+                ks.innerHTML='<div class="key-status valid"><span class="material-icons-outlined" style="font-size:16px">check_circle</span> Transfer ID and Public Key provided. Ready to upload file.</div>';
+                document.getElementById('body2').classList.remove('collapsed');
+                setStep(2);
+            } else if(tid.length>0 && pk.length>0 && !pk.includes('-----BEGIN PUBLIC KEY-----')){
+                ks.innerHTML='<div class="key-status none"><span class="material-icons-outlined" style="font-size:16px">error</span> Invalid public key format. Must start with -----BEGIN PUBLIC KEY-----</div>';
+                document.getElementById('body2').classList.add('collapsed');
+            } else {
+                ks.innerHTML='';
+                document.getElementById('body2').classList.add('collapsed');
+            }
+        }
+
+        async function encryptAndSend(){
+            if(!selectedFile||!transferId||!publicKey)return;
+            const btn=document.getElementById('btnEncrypt');setLoading(btn,true);
+            document.getElementById('credError').classList.add('hidden');
+
+            const fd=new FormData();
+            fd.append('file',selectedFile);
+            fd.append('transfer_id',transferId);
+            fd.append('public_key',publicKey);
+
+            try{
+                const res=await fetch('/api/sender/encrypt',{method:'POST',body:fd});const d=await res.json();
+                if(d.success){
+                    document.getElementById('encResult').innerHTML=`
+                        <div class="result-card">
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                                <span class="badge badge-green"><span class="material-icons-outlined" style="font-size:14px">check_circle</span> Encrypted & transferred</span>
+                            </div>
+                            <div class="result-row"><span class="result-label">File</span><span class="result-val">${d.original_name}</span></div>
+                            <div class="result-row"><span class="result-label">Original size</span><span class="result-val">${formatBytes(d.original_size)}</span></div>
+                            <div class="result-row"><span class="result-label">Encrypted size</span><span class="result-val">${formatBytes(d.encrypted_size)}</span></div>
+                            <div class="result-row"><span class="result-label">SHA-256</span><span class="result-val" style="font-size:10px">${d.sha256_original}</span></div>
+                            <div class="result-row"><span class="result-label">Transfer integrity</span><span class="result-val ok">${d.transfer_integrity?'Verified':'Failed'}</span></div>
+                            <div class="result-row"><span class="result-label">Encryption time</span><span class="result-val ok">${d.encrypt_time_ms} ms</span></div>
+                            <div class="result-row"><span class="result-label">Public key</span><span class="result-val ok">Verified & used for encryption</span></div>
+                        </div>
+                        <div class="hex-block"><strong style="color:var(--text-disabled)">Encrypted data (hex):</strong> ${d.hex_preview}</div>`;
+                    document.getElementById('encResult').classList.remove('hidden');
+                    document.getElementById('body3').classList.remove('collapsed');
+                    document.getElementById('body3').innerHTML=`
+                        <div class="done-box">
+                            <span class="material-icons-outlined" style="font-size:48px;color:var(--green)">task_alt</span>
+                            <h3>File sent successfully!</h3>
+                            <p>The receiver can now click "Check for file & decrypt" on their page to download it.</p>
+                            <p style="margin-top:12px;font-size:12px;color:var(--text-disabled)">The file was encrypted with the receiver's public key. Only their private key (stored securely on the server) can decrypt it.</p>
+                        </div>`;
+                    setStep(3);
+                }else{
+                    document.getElementById('credError').innerHTML=`<div class="error-box"><span class="material-icons-outlined" style="font-size:18px">error</span>${d.error}</div>`;
+                    document.getElementById('credError').classList.remove('hidden');
+                }
+            }catch(e){
+                document.getElementById('credError').innerHTML=`<div class="error-box"><span class="material-icons-outlined" style="font-size:18px">error</span>${e.message}</div>`;
+                document.getElementById('credError').classList.remove('hidden');
+            }
+            setLoading(btn,false);
+        }
+    </script>
+</body>
+</html>

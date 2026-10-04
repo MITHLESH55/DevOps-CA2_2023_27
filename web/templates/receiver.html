@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receiver — Secure File Transfer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        :root{
+            --white:#fff;--bg:#f8f9fa;--surface:#fff;--surface-hover:#f1f3f4;
+            --border:#dadce0;--border-focus:#1a73e8;
+            --blue:#1a73e8;--blue-light:#e8f0fe;--blue-dark:#1557b0;
+            --green:#1e8e3e;--green-light:#e6f4ea;
+            --red:#d93025;--red-light:#fce8e6;
+            --yellow:#f9ab00;--yellow-light:#fef7e0;
+            --purple:#7c3aed;--purple-light:#f3e8ff;
+            --text-primary:#202124;--text-secondary:#5f6368;--text-disabled:#9aa0a6;
+            --shadow-1:0 1px 2px 0 rgba(60,64,67,.3),0 1px 3px 1px rgba(60,64,67,.15);
+            --shadow-2:0 1px 3px 0 rgba(60,64,67,.3),0 4px 8px 3px rgba(60,64,67,.15);
+            --radius:8px;--radius-lg:12px;--radius-xl:16px;
+        }
+        body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--text-primary);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+        nav{background:var(--white);border-bottom:1px solid var(--border);padding:12px 24px;position:sticky;top:0;z-index:100}
+        .nav-inner{max-width:960px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+        .nav-brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--text-primary)}
+        .nav-icon{width:40px;height:40px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px}
+        .nav-title{font-family:'Google Sans',sans-serif;font-size:18px;font-weight:500}
+        .nav-links{display:flex;gap:4px}
+        .nav-link{padding:8px 16px;border-radius:100px;font-size:14px;font-weight:500;text-decoration:none;color:var(--text-secondary);transition:.2s}
+        .nav-link:hover{background:var(--surface-hover)}
+        .nav-link.active{background:var(--blue-light);color:var(--blue)}
+
+        .container{max-width:720px;margin:0 auto;padding:32px 24px 80px}
+
+        .page-header{margin-bottom:32px}
+        .page-header h1{font-family:'Google Sans',sans-serif;font-size:28px;font-weight:400;color:var(--text-primary);margin-bottom:8px}
+        .page-header p{font-size:14px;color:var(--text-secondary);line-height:1.6}
+
+        .security-banner{background:linear-gradient(135deg,#e8f0fe,#f3e8ff);border:1px solid #a8c7fa;border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:24px;display:flex;align-items:center;gap:12px}
+        .security-banner .material-icons-outlined{color:var(--green);font-size:24px}
+        .security-banner-text{font-size:13px;color:var(--text-secondary);line-height:1.5}
+        .security-banner-text strong{color:var(--green)}
+
+        .stepper{display:flex;align-items:center;gap:0;margin-bottom:32px;padding:0 8px}
+        .step{display:flex;align-items:center;gap:8px}
+        .step-circle{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;background:var(--surface-hover);color:var(--text-disabled);border:2px solid var(--border);transition:.3s;flex-shrink:0}
+        .step.active .step-circle{background:var(--blue);border-color:var(--blue);color:#fff}
+        .step.done .step-circle{background:var(--green);border-color:var(--green);color:#fff}
+        .step-label{font-size:13px;font-weight:500;color:var(--text-disabled);white-space:nowrap}
+        .step.active .step-label{color:var(--blue)}
+        .step.done .step-label{color:var(--green)}
+        .step-line{flex:1;height:2px;background:var(--border);margin:0 12px;min-width:24px}
+        .step-line.done{background:var(--green)}
+
+        .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:16px;overflow:hidden;transition:.2s}
+        .card:hover{box-shadow:var(--shadow-1)}
+        .card-head{padding:20px 24px;display:flex;align-items:center;gap:16px;cursor:default}
+        .card-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+        .card-icon.blue{background:var(--blue-light);color:var(--blue)}
+        .card-icon.green{background:var(--green-light);color:var(--green)}
+        .card-icon.yellow{background:var(--yellow-light);color:var(--yellow)}
+        .card-icon.purple{background:var(--purple-light);color:var(--purple)}
+        .card-title{font-family:'Google Sans',sans-serif;font-size:16px;font-weight:500}
+        .card-desc{font-size:13px;color:var(--text-secondary);margin-top:2px}
+        .card-body{padding:0 24px 24px}
+        .card-body.collapsed{display:none}
+
+        .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 24px;border-radius:100px;border:none;font-family:'Google Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:.2s}
+        .btn:disabled{opacity:.38;cursor:default}
+        .btn-primary{background:var(--blue);color:#fff}
+        .btn-primary:hover:not(:disabled){background:var(--blue-dark);box-shadow:var(--shadow-1)}
+        .btn-green{background:var(--green);color:#fff}
+        .btn-green:hover:not(:disabled){background:#1a7f37;box-shadow:var(--shadow-1)}
+        .btn-purple{background:var(--purple);color:#fff}
+        .btn-purple:hover:not(:disabled){background:#6d28d9;box-shadow:var(--shadow-1)}
+        .btn-outline{background:transparent;color:var(--blue);border:1px solid var(--border)}
+        .btn-outline:hover:not(:disabled){background:var(--blue-light);border-color:var(--blue)}
+        .btn-full{width:100%}
+        .btn-lg{padding:12px 32px;font-size:15px}
+
+        .spinner{display:none;width:18px;height:18px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+        .btn.loading .spinner{display:block}
+        .btn.loading .btn-label{display:none}
+        @keyframes spin{to{transform:rotate(360deg)}}
+
+        .result-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-top:16px;animation:fadeUp .3s ease}
+        .result-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px}
+        .result-label{color:var(--text-secondary);font-weight:400}
+        .result-val{font-family:'Roboto Mono',monospace;font-size:12px;color:var(--text-primary);text-align:right;max-width:55%;word-break:break-all}
+        .result-val.ok{color:var(--green);font-weight:500}
+        .result-val.fail{color:var(--red);font-weight:500}
+
+        .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:100px;font-size:12px;font-weight:500}
+        .badge-green{background:var(--green-light);color:var(--green)}
+        .badge-blue{background:var(--blue-light);color:var(--blue)}
+        .badge-purple{background:var(--purple-light);color:var(--purple)}
+
+        .share-box{background:linear-gradient(135deg,#e8f0fe,#f3e8ff);border:1px solid #a8c7fa;border-radius:var(--radius-lg);padding:24px;text-align:center;margin-top:16px;animation:fadeUp .3s ease}
+        .share-box h3{font-family:'Google Sans',sans-serif;font-size:18px;font-weight:500;color:var(--blue);margin-bottom:4px}
+        .share-box p{font-size:13px;color:var(--text-secondary)}
+        .transfer-id-display{display:inline-block;margin:16px 0;padding:12px 32px;background:var(--white);border:2px solid var(--blue);border-radius:var(--radius);font-family:'Roboto Mono',monospace;font-size:28px;font-weight:700;letter-spacing:4px;color:var(--blue)}
+
+        .key-area{margin-top:12px;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;position:relative}
+        .key-area label{font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;font-weight:500;display:block;margin-bottom:6px}
+        .key-area pre{font-family:'Roboto Mono',monospace;font-size:11px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap;word-break:break-all;max-height:100px;overflow:auto;margin:0}
+        .key-area .copy-btn{position:absolute;top:10px;right:10px;padding:4px 12px;border-radius:100px;border:1px solid var(--border);background:var(--white);color:var(--text-secondary);font-size:12px;font-weight:500;cursor:pointer;transition:.2s;font-family:'Roboto',sans-serif}
+        .key-area .copy-btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-light)}
+
+        .file-info{background:var(--blue-light);border:1px solid #a8c7fa;border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;animation:fadeUp .3s ease}
+        .file-info-row{display:flex;align-items:center;justify-content:space-between;font-size:13px;padding:3px 0}
+        .file-info-label{color:var(--text-secondary)}
+        .file-info-val{font-family:'Roboto Mono',monospace;font-size:12px;font-weight:500;color:var(--blue)}
+
+        .success-box{background:var(--green-light);border:1px solid #a8dab5;border-radius:var(--radius-lg);padding:32px;text-align:center;margin-top:16px;animation:fadeUp .3s ease}
+        .success-box .material-icons-outlined{font-size:64px;color:var(--green);margin-bottom:12px}
+        .success-box h3{font-family:'Google Sans',sans-serif;font-size:20px;font-weight:500;color:var(--green);margin-bottom:8px}
+        .success-box p{font-size:13px;color:var(--text-secondary);margin-bottom:20px}
+
+        .error-box{background:var(--red-light);border:1px solid #f5c6c2;border-radius:var(--radius);padding:12px 16px;margin-top:12px;font-size:13px;color:var(--red);display:flex;align-items:center;gap:8px;animation:fadeUp .3s ease}
+
+        @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        .hidden{display:none!important}
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-inner">
+            <a href="/" class="nav-brand">
+                <div class="nav-icon"><span class="material-icons-outlined">lock</span></div>
+                <span class="nav-title">Secure File Transfer</span>
+            </a>
+            <div class="nav-links">
+                <a href="/sender" class="nav-link">Sender</a>
+                <a href="/receiver" class="nav-link active">Receiver</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>Receive a file securely</h1>
+            <p>Generate your encryption keys, share the public key with the sender, then decrypt and download your file.</p>
+        </div>
+
+        <div class="security-banner">
+            <span class="material-icons-outlined">verified_user</span>
+            <div class="security-banner-text">
+                <strong>Secure Key Distribution:</strong> You generate the keys. Your private key <strong>never leaves the server</strong>. Only the public key is shared with the sender — safe to share openly.
+            </div>
+        </div>
+
+        <div class="stepper">
+            <div class="step active" id="s1"><div class="step-circle">1</div><div class="step-label">Generate keys</div></div>
+            <div class="step-line" id="sl1"></div>
+            <div class="step" id="s2"><div class="step-circle">2</div><div class="step-label">Share & wait</div></div>
+            <div class="step-line" id="sl2"></div>
+            <div class="step" id="s3"><div class="step-circle">3</div><div class="step-label">Decrypt & download</div></div>
+        </div>
+
+        <!-- STEP 1: Generate Keys -->
+        <div class="card" id="card1">
+            <div class="card-head">
+                <div class="card-icon purple"><span class="material-icons-outlined">vpn_key</span></div>
+                <div><div class="card-title">Generate RSA-2048 key pair</div><div class="card-desc">Creates your personal public + private key pair. Private key stays secure on the server.</div></div>
+            </div>
+            <div class="card-body" id="body1">
+                <button class="btn btn-purple btn-lg btn-full" onclick="generateKeys()" id="btnKeygen">
+                    <span class="spinner"></span>
+                    <span class="btn-label"><span class="material-icons-outlined" style="font-size:18px">auto_awesome</span> Generate my encryption keys</span>
+                </button>
+                <div class="hidden" id="keyResult"></div>
+            </div>
+        </div>
+
+        <!-- STEP 2: Share credentials with sender -->
+        <div class="card" id="card2">
+            <div class="card-head">
+                <div class="card-icon blue"><span class="material-icons-outlined">share</span></div>
+                <div><div class="card-title">Share with sender & wait</div><div class="card-desc">Give the Transfer ID and Public Key to the sender, then wait for them to upload</div></div>
+            </div>
+            <div class="card-body collapsed" id="body2"></div>
+        </div>
+
+        <!-- STEP 3: Decrypt & Download -->
+        <div class="card" id="card3">
+            <div class="card-head">
+                <div class="card-icon green"><span class="material-icons-outlined">lock_open</span></div>
+                <div><div class="card-title">Decrypt & download file</div><div class="card-desc">Once the sender uploads, decrypt with your stored private key and download</div></div>
+            </div>
+            <div class="card-body collapsed" id="body3">
+                <button class="btn btn-primary btn-lg btn-full" onclick="checkAndDecrypt()" id="btnCheck">
+                    <span class="spinner"></span>
+                    <span class="btn-label"><span class="material-icons-outlined" style="font-size:18px">manage_search</span> Check for file & decrypt</span>
+                </button>
+                <div id="checkError" class="hidden"></div>
+                <div id="decryptResult" class="hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let transferId=null, publicKey=null;
+        function setLoading(btn,on){if(on){btn.classList.add('loading');btn.disabled=true}else{btn.classList.remove('loading');btn.disabled=false}}
+        function setStep(n){for(let i=1;i<=3;i++){const s=document.getElementById('s'+i);s.classList.remove('active','done');if(i<n){s.classList.add('done')}else if(i===n){s.classList.add('active')}}for(let i=1;i<=2;i++){const l=document.getElementById('sl'+i);l.classList.toggle('done',i<n)}}
+        function formatBytes(b){if(!b)return'0 B';const k=1024,s=['B','KB','MB','GB'];const i=Math.floor(Math.log(b)/Math.log(k));return parseFloat((b/Math.pow(k,i)).toFixed(2))+' '+s[i]}
+
+        async function generateKeys(){
+            const btn=document.getElementById('btnKeygen');setLoading(btn,true);
+            try{
+                const res=await fetch('/api/receiver/init-transfer',{method:'POST'});const d=await res.json();
+                if(d.success){
+                    transferId=d.transfer_id;publicKey=d.public_key;
+                    document.getElementById('keyResult').innerHTML=`
+                        <div class="result-card">
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                                <span class="badge badge-green"><span class="material-icons-outlined" style="font-size:14px">check_circle</span> Keys generated</span>
+                                <span style="font-size:12px;color:var(--text-disabled)">${d.time_ms} ms</span>
+                            </div>
+                            <div class="result-row"><span class="result-label">Transfer ID</span><span class="result-val ok" style="font-size:16px;font-weight:700;letter-spacing:2px">${d.transfer_id}</span></div>
+                            <div class="result-row"><span class="result-label">Algorithm</span><span class="result-val">RSA-2048 OAEP</span></div>
+                            <div class="result-row"><span class="result-label">Private Key</span><span class="result-val ok">🔒 Stored securely on server</span></div>
+                            <div class="result-row"><span class="result-label">Public Key</span><span class="result-val">🔓 Safe to share with sender</span></div>
+                        </div>`;
+                    document.getElementById('keyResult').classList.remove('hidden');
+
+                    // Show Step 2 — share credentials
+                    document.getElementById('body2').classList.remove('collapsed');
+                    document.getElementById('body2').innerHTML=`
+                        <div class="share-box">
+                            <h3>Share these with the sender</h3>
+                            <p>The sender needs the Transfer ID and your Public Key to encrypt a file for you</p>
+                            <div class="transfer-id-display">${transferId}</div>
+                        </div>
+                        <div class="key-area" style="margin-top:12px">
+                            <label>Your Public Key (safe to share — this is NOT the private key)</label>
+                            <button class="copy-btn" onclick="copyPubKey()">Copy</button>
+                            <pre id="pubKeyDisplay">${publicKey}</pre>
+                        </div>
+                        <div style="margin-top:20px;text-align:center">
+                            <p style="font-size:14px;color:var(--text-secondary);margin-bottom:12px">Now send the <strong>Transfer ID</strong> + <strong>Public Key</strong> to the sender</p>
+                            <a href="/sender" target="_blank" class="btn btn-outline btn-lg" style="text-decoration:none">Open Sender Page →</a>
+                        </div>`;
+
+                    // Show Step 3
+                    document.getElementById('body3').classList.remove('collapsed');
+                    setStep(2);
+                }
+            }catch(e){alert('Error: '+e.message)}
+            setLoading(btn,false);
+        }
+
+        async function checkAndDecrypt(){
+            if(!transferId)return;
+            const btn=document.getElementById('btnCheck');setLoading(btn,true);
+            document.getElementById('checkError').classList.add('hidden');
+            try{
+                // First check if file has been sent
+                const checkRes=await fetch('/api/receiver/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transfer_id:transferId})});
+                const checkData=await checkRes.json();
+                if(!checkData.success){
+                    document.getElementById('checkError').innerHTML=`<div class="error-box"><span class="material-icons-outlined" style="font-size:18px">hourglass_empty</span>${checkData.error}</div>`;
+                    document.getElementById('checkError').classList.remove('hidden');
+                    setLoading(btn,false);
+                    return;
+                }
+
+                // File found — now decrypt (no private key needed, it's on the server!)
+                const decRes=await fetch('/api/receiver/decrypt',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transfer_id:transferId})});
+                const d=await decRes.json();
+                if(d.success){
+                    document.getElementById('decryptResult').innerHTML=`
+                        <div class="success-box">
+                            <span class="material-icons-outlined">verified</span>
+                            <h3>File decrypted successfully</h3>
+                            <p>Decrypted using your private key (stored securely). Integrity verified — SHA-256 hashes match.</p>
+                            <div class="result-card" style="text-align:left;background:var(--white);border-color:#a8dab5;margin-bottom:20px">
+                                <div class="result-row"><span class="result-label">File</span><span class="result-val">${d.original_name}</span></div>
+                                <div class="result-row"><span class="result-label">Decrypted size</span><span class="result-val">${formatBytes(d.decrypted_size)}</span></div>
+                                <div class="result-row"><span class="result-label">SHA-256 (original)</span><span class="result-val" style="font-size:10px">${d.sha256_original}</span></div>
+                                <div class="result-row"><span class="result-label">SHA-256 (decrypted)</span><span class="result-val" style="font-size:10px">${d.sha256_decrypted}</span></div>
+                                <div class="result-row"><span class="result-label">Integrity</span><span class="result-val ${d.integrity_verified?'ok':'fail'}">${d.integrity_verified?'Verified ✓':'Failed ✗'}</span></div>
+                                <div class="result-row"><span class="result-label">Decryption time</span><span class="result-val ok">${d.time_ms} ms</span></div>
+                                <div class="result-row"><span class="result-label">Private key</span><span class="result-val ok">🔒 Used from secure server storage</span></div>
+                            </div>
+                            <a href="${d.download_url}" class="btn btn-green btn-lg" style="text-decoration:none;padding:14px 40px">
+                                <span class="material-icons-outlined" style="font-size:20px">download</span> Download file
+                            </a>
+                        </div>`;
+                    document.getElementById('decryptResult').classList.remove('hidden');
+                    setStep(3);
+                }else{
+                    document.getElementById('checkError').innerHTML=`<div class="error-box"><span class="material-icons-outlined" style="font-size:18px">error</span>${d.error}</div>`;
+                    document.getElementById('checkError').classList.remove('hidden');
+                }
+            }catch(e){
+                document.getElementById('checkError').innerHTML=`<div class="error-box"><span class="material-icons-outlined" style="font-size:18px">error</span>${e.message}</div>`;
+                document.getElementById('checkError').classList.remove('hidden');
+            }
+            setLoading(btn,false);
+        }
+
+        function copyPubKey(){navigator.clipboard.writeText(publicKey).then(()=>{const b=document.querySelector('.copy-btn');b.textContent='Copied!';setTimeout(()=>b.textContent='Copy',2000)})}
+    </script>
+</body>
+</html>

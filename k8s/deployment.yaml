@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secure-file-transfer
+  labels:
+    app: secure-file-transfer
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
+  selector:
+    matchLabels:
+      app: secure-file-transfer
+
+  template:
+    metadata:
+      labels:
+        app: secure-file-transfer
+
+    spec:
+      containers:
+        - name: secure-file-transfer
+          image: secure-file-transfer:v1
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 5000
+              protocol: TCP
+
+          env:
+            - name: APP_VERSION
+              value: "1.0.0"
+
+          readinessProbe:
+            httpGet:
+              path: /api/version
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /api/version
+              port: 5000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL

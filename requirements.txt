@@ -1,0 +1,4 @@
+pycryptodome
+flask
+gunicorn
+prometheus-client==0.26.0

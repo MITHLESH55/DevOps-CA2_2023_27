@@ -1,0 +1,237 @@
+---
+- name: Configure Secure File Transfer Runtime Environment
+  hosts: secure_file_transfer
+  become: true
+  gather_facts: true
+
+  vars:
+    app_user: sftapp
+    app_group: sftapp
+    app_dir: /opt/secure-file-transfer
+    venv_dir: /opt/secure-file-transfer/venv
+    app_port: 5002
+    service_name: secure-file-transfer
+
+  tasks:
+
+    # ==========================================================
+    # SYSTEM PACKAGES
+    # ==========================================================
+
+    - name: Install required runtime packages
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - python3-venv
+          - curl
+          - ca-certificates
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+
+    # ==========================================================
+    # APPLICATION USER AND GROUP
+    # ==========================================================
+
+    - name: Create application group
+      group:
+        name: "{{ app_group }}"
+        state: present
+
+
+    - name: Create dedicated non-login application user
+      user:
+        name: "{{ app_user }}"
+        group: "{{ app_group }}"
+        shell: /usr/sbin/nologin
+        create_home: true
+        state: present
+
+
+    # ==========================================================
+    # APPLICATION DIRECTORIES
+    # ==========================================================
+
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0750"
+
+
+    - name: Create application workspace
+      file:
+        path: "{{ app_dir }}/web_workspace"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0750"
+
+
+    # ==========================================================
+    # APPLICATION FILES
+    # ==========================================================
+
+    - name: Copy application entry point
+      copy:
+        src: ../main.py
+        dest: "{{ app_dir }}/main.py"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0640"
+
+
+    - name: Copy runtime requirements
+      copy:
+        src: ../requirements.txt
+        dest: "{{ app_dir }}/requirements.txt"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0640"
+
+
+    - name: Copy core application modules
+      copy:
+        src: ../core/
+        dest: "{{ app_dir }}/core/"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        directory_mode: "0750"
+        mode: "0640"
+
+
+    - name: Copy web application
+      copy:
+        src: ../web/
+        dest: "{{ app_dir }}/web/"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        directory_mode: "0750"
+        mode: "0640"
+
+
+    # ==========================================================
+    # PYTHON VIRTUAL ENVIRONMENT
+    # ==========================================================
+
+    - name: Create Python virtual environment
+      command:
+        cmd: "python3 -m venv {{ venv_dir }}"
+        creates: "{{ venv_dir }}/bin/activate"
+      become_user: "{{ app_user }}"
+
+
+    - name: Install Python dependencies
+      pip:
+        requirements: "{{ app_dir }}/requirements.txt"
+        virtualenv: "{{ venv_dir }}"
+      become_user: "{{ app_user }}"
+
+
+    # ==========================================================
+    # SYSTEMD SERVICE
+    # ==========================================================
+
+    - name: Install systemd service definition
+      copy:
+        src: files/secure-file-transfer.service
+        dest: "/etc/systemd/system/{{ service_name }}.service"
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Reload systemd
+        - Restart secure file transfer service
+
+
+    # ==========================================================
+    # PERMISSIONS
+    # ==========================================================
+
+    - name: Set secure workspace permissions
+      file:
+        path: "{{ app_dir }}/web_workspace"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0750"
+        recurse: true
+
+
+    - name: Ensure application files belong to application user
+      file:
+        path: "{{ app_dir }}"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        recurse: true
+
+
+    # ==========================================================
+    # ENABLE AND START SERVICE
+    # ==========================================================
+
+    - name: Enable Secure File Transfer service
+      systemd:
+        name: "{{ service_name }}"
+        enabled: true
+        daemon_reload: true
+
+
+    - name: Start Secure File Transfer service
+      systemd:
+        name: "{{ service_name }}"
+        state: started
+
+
+    # ==========================================================
+    # SERVICE VALIDATION
+    # ==========================================================
+
+    - name: Wait for application port
+      wait_for:
+        host: 127.0.0.1
+        port: "{{ app_port }}"
+        delay: 2
+        timeout: 30
+
+
+    - name: Verify application health endpoint
+      uri:
+        url: "http://127.0.0.1:{{ app_port }}/api/version"
+        method: GET
+        status_code: 200
+        return_content: true
+      register: health_check
+
+
+    - name: Display deployment information
+      debug:
+        msg:
+          - "Application configured successfully."
+          - "Application directory: {{ app_dir }}"
+          - "Application user: {{ app_user }}"
+          - "Python virtual environment: {{ venv_dir }}"
+          - "Systemd service: {{ service_name }}"
+          - "Application port: {{ app_port }}"
+          - "Health check: HTTP {{ health_check.status }}"
+          - "Application response: {{ health_check.content }}"
+
+
+  # ============================================================
+  # HANDLERS
+  # ============================================================
+
+  handlers:
+
+    - name: Reload systemd
+      systemd:
+        daemon_reload: true
+
+
+    - name: Restart secure file transfer service
+      systemd:
+        name: "{{ service_name }}"
+        state: restarted

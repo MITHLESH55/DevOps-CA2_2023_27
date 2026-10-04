@@ -1,0 +1,308 @@
+name: Secure File Transfer - DevSecOps CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - devops-ca-final
+
+  pull_request:
+    branches:
+      - main
+      - devops-ca-final
+
+  workflow_dispatch:
+
+# Required permissions for reading the repository
+# and publishing container images to GHCR.
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: secure-file-transfer
+
+jobs:
+
+  # ============================================================
+  # JOB 1 - APPLICATION TESTING
+  # ============================================================
+
+  test:
+    name: Test Application
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout Source Code
+        uses: actions/checkout@v5
+
+      - name: Set Up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Upgrade pip
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Install Runtime Dependencies
+        run: |
+          python -m pip install -r requirements.txt
+
+      - name: Install Development Dependencies
+        run: |
+          python -m pip install -r requirements-dev.txt
+
+      - name: Run Automated Tests
+        run: |
+          python -m pytest -v --junitxml=test-results.xml
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results
+          path: test-results.xml
+
+
+  # ============================================================
+  # JOB 2 - PYTHON SECURITY / DEPENDENCY AUDIT
+  # ============================================================
+
+  security:
+    name: Dependency Security Scan
+    runs-on: ubuntu-latest
+
+    needs:
+      - test
+
+    steps:
+
+      - name: Checkout Source Code
+        uses: actions/checkout@v5
+
+      - name: Set Up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pip-audit
+
+      - name: Run pip-audit
+        run: |
+          pip-audit -r requirements.txt
+
+
+  # ============================================================
+  # JOB 3 - DOCKER BUILD + CONTAINER SECURITY SCAN
+  # ============================================================
+
+  container:
+    name: Build and Scan Docker Image
+    runs-on: ubuntu-latest
+
+    needs:
+      - test
+      - security
+
+    steps:
+
+      - name: Checkout Source Code
+        uses: actions/checkout@v5
+
+      - name: Set Up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        run: |
+          docker build \
+            --build-arg APP_VERSION=${{ github.sha }} \
+            -t secure-file-transfer:${{ github.sha }} \
+            .
+
+      - name: Scan Docker Image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: secure-file-transfer:${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Save Docker Image
+        run: |
+          docker save \
+            secure-file-transfer:${{ github.sha }} \
+            -o secure-file-transfer-image.tar
+
+      - name: Upload Docker Image Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: secure-file-transfer-docker-image
+          path: secure-file-transfer-image.tar
+
+
+  # ============================================================
+  # JOB 4 - PUBLISH DOCKER IMAGE TO GITHUB CONTAINER REGISTRY
+  # ============================================================
+
+  publish:
+    name: Publish Image to GHCR
+    runs-on: ubuntu-latest
+
+    needs:
+      - container
+
+    # Do not publish images for pull requests.
+    if: github.event_name != 'pull_request'
+
+    steps:
+
+      - name: Download Docker Image
+        uses: actions/download-artifact@v5
+        with:
+          name: secure-file-transfer-docker-image
+
+      - name: Load Docker Image
+        run: |
+          docker load \
+            --input secure-file-transfer-image.tar
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare Lowercase Image Name
+        id: image
+        shell: bash
+        run: |
+          OWNER="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          IMAGE="${{ env.REGISTRY }}/${OWNER}/${{ env.IMAGE_NAME }}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Tag Docker Image
+        run: |
+          docker tag \
+            secure-file-transfer:${{ github.sha }} \
+            ${{ steps.image.outputs.image }}:${{ github.sha }}
+
+      - name: Push Docker Image
+        run: |
+          docker push \
+            ${{ steps.image.outputs.image }}:${{ github.sha }}
+
+
+  # ============================================================
+  # JOB 5 - KUBERNETES DEPLOYMENT
+  # ============================================================
+
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+
+    needs:
+      - container
+      - publish
+
+    if: github.event_name != 'pull_request'
+
+    steps:
+
+      - name: Checkout Source Code
+        uses: actions/checkout@v5
+
+      - name: Download Docker Image
+        uses: actions/download-artifact@v5
+        with:
+          name: secure-file-transfer-docker-image
+
+      - name: Load Docker Image
+        run: |
+          docker load \
+            --input secure-file-transfer-image.tar
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: latest
+
+      - name: Create Kubernetes Cluster
+        uses: helm/kind-action@v1.14.0
+        with:
+          cluster_name: secure-file-transfer
+
+      - name: Load Docker Image into Kubernetes
+        run: |
+          kind load docker-image \
+            secure-file-transfer:${{ github.sha }} \
+            --name secure-file-transfer
+
+      - name: Deploy Kubernetes Manifests
+        run: |
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+
+      - name: Update Deployment Image
+        run: |
+          kubectl set image deployment/secure-file-transfer \
+            secure-file-transfer=secure-file-transfer:${{ github.sha }}
+
+      - name: Update Application Version
+        run: |
+          kubectl set env deployment/secure-file-transfer \
+            APP_VERSION=${{ github.sha }}
+
+      - name: Wait for Kubernetes Rollout
+        run: |
+          kubectl rollout status \
+            deployment/secure-file-transfer \
+            --timeout=180s
+
+      - name: Display Kubernetes Resources
+        run: |
+          echo "===== DEPLOYMENT ====="
+          kubectl get deployment
+
+          echo "===== PODS ====="
+          kubectl get pods -o wide
+
+          echo "===== SERVICES ====="
+          kubectl get service
+
+      - name: Start Kubernetes Port Forward
+        run: |
+          kubectl port-forward \
+            service/secure-file-transfer \
+            5000:5000 > /tmp/sft-port-forward.log 2>&1 &
+
+          sleep 10
+
+      - name: Smoke Test - Application
+        run: |
+          curl --fail --silent \
+            http://127.0.0.1:5000/api/version
+
+      - name: Smoke Test - Metrics
+        run: |
+          curl --fail --silent \
+            http://127.0.0.1:5000/metrics
+
+      - name: Display Running Application Version
+        run: |
+          curl --silent \
+            http://127.0.0.1:5000/api/version
+
+      - name: Show Port Forward Logs
+        if: always()
+        run: |
+          cat /tmp/sft-port-forward.log || true
